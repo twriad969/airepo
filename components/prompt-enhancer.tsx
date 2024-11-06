@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Wand2, Loader2, Zap, Brain, Cpu, Check } from "lucide-react";
+import { Sparkles, Wand2, Loader2, Zap, Brain, Cpu, Check, Copy, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -70,12 +70,37 @@ const modelInfo = {
   }
 };
 
+const LOCAL_STORAGE_KEY = "promptEnhancer.model";
+
 export function PromptEnhancer() {
   const [prompt, setPrompt] = useState("");
   const [enhancedPrompt, setEnhancedPrompt] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [model, setModel] = useState("free");
+  const [isCopied, setIsCopied] = useState(false);
   const router = useRouter();
+
+  // Load saved model preference from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedModel = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedModel && (savedModel === "free" || savedModel === "pro")) {
+        setModel(savedModel);
+      }
+    } catch (error) {
+      console.error("Failed to load model preference:", error);
+    }
+  }, []);
+
+  // Save model preference to localStorage whenever it changes
+  const handleModelChange = (newModel: string) => {
+    setModel(newModel);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, newModel);
+    } catch (error) {
+      console.error("Failed to save model preference:", error);
+    }
+  };
 
   const handleEnhance = async () => {
     if (!prompt.trim()) {
@@ -106,6 +131,17 @@ export function PromptEnhancer() {
     }
   };
 
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(enhancedPrompt);
+      setIsCopied(true);
+      toast.success("Copied to clipboard!");
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      toast.error("Failed to copy to clipboard");
+    }
+  };
+
   const selectedModel = modelInfo[model as keyof typeof modelInfo];
   const ModelIcon = selectedModel.icon;
 
@@ -125,7 +161,7 @@ export function PromptEnhancer() {
             <div className="flex items-center justify-between mb-4">
               <HoverCard>
                 <HoverCardTrigger asChild>
-                  <Select value={model} onValueChange={setModel}>
+                  <Select value={model} onValueChange={handleModelChange}>
                     <SelectTrigger className="w-[200px]">
                       <div className="flex items-center gap-2">
                         <ModelIcon className="h-4 w-4" />
@@ -231,10 +267,25 @@ export function PromptEnhancer() {
               <motion.div
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
-                className="flex items-center gap-2 mb-4"
+                className="flex items-center justify-between mb-4"
               >
-                <Sparkles className="h-5 w-5 text-primary/60" />
-                <h3 className="font-semibold text-primary/80">Enhanced Prompt</h3>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary/60" />
+                  <h3 className="font-semibold text-primary/80">Enhanced Prompt</h3>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopy}
+                  className="flex items-center gap-2"
+                >
+                  {isCopied ? (
+                    <CheckCheck className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                  {isCopied ? "Copied!" : "Copy"}
+                </Button>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0 }}
